@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JitBit Cockpit | AI Ticket Triage</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="logo-section">
+            <div class="logo-icon">JC</div>
+            <div class="logo-text">
+                <h1>JITBIT COCKPIT</h1>
+                <span>Intelligent AI Triage Dashboard</span>
+            </div>
+        </div>
+        <div class="status-badge">
+            <div class="status-dot"></div>
+            <span>Antigravity Triage Active</span>
+        </div>
+    </header>
+
+    <!-- KPI Section -->
+    <section class="kpi-container" id="kpi-section">
+        <div class="kpi-card kpi-backlog">
+            <span class="kpi-title">Active Backlog</span>
+            <div class="kpi-value" id="kpi-total-backlog">0</div>
+            <span class="kpi-description">Tickets assigned to you</span>
+        </div>
+        <div class="kpi-card kpi-critical">
+            <span class="kpi-title">Urgent Attention</span>
+            <div class="kpi-value" id="kpi-urgent-count">0</div>
+            <span class="kpi-description">Critical & High priority</span>
+        </div>
+        <div class="kpi-card kpi-stale">
+            <span class="kpi-title">Stale Tickets</span>
+            <div class="kpi-value" id="kpi-stale-count">0</div>
+            <span class="kpi-description">Unresolved &gt; 14 days</span>
+        </div>
+        <div class="kpi-card kpi-project">
+            <span class="kpi-title">Summer Projects</span>
+            <div class="kpi-value" id="kpi-project-count">0</div>
+            <span class="kpi-description">Deferred summer tasks</span>
+        </div>
+    </section>
+
+    <!-- Workspace Layout -->
+    <main class="workspace">
+        <!-- Left Side: Ticket List -->
+        <section class="list-panel">
+            <div class="search-filter-section">
+                <!-- Live Search -->
+                <div class="search-wrapper">
+                    <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text" class="search-input" id="search-input"
+                        placeholder="Search by subject, body, sender...">
+                </div>
+
+                <!-- Quick Location Filters -->
+                <div class="filter-group" id="filter-building-group">
+                    <span class="filter-pill active" data-filter="all">All Locations</span>
+                    <span class="filter-pill" data-filter="bps">BPS</span>
+                    <span class="filter-pill" data-filter="bis">BIS</span>
+                    <span class="filter-pill" data-filter="other">District/Other</span>
+                </div>
+
+                <!-- Priority Filters -->
+                <div class="filter-group" id="filter-priority-group">
+                    <span class="filter-pill active" data-filter="all">All Priorities</span>
+                    <span class="filter-pill" data-filter="Critical">Critical</span>
+                    <span class="filter-pill" data-filter="High">High</span>
+                    <span class="filter-pill" data-filter="Medium">Medium</span>
+                    <span class="filter-pill" data-filter="Low">Low</span>
+                </div>
+            </div>
+
+            <!-- List of tickets -->
+            <div class="ticket-list" id="ticket-list-container">
+                <!-- Javascript will render cards here -->
+            </div>
+        </section>
+
+        <!-- Right Side: Details View -->
+        <section class="details-panel" id="details-panel-container">
+            <!-- Empty state default -->
+            <div class="empty-state" id="empty-state-view">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                <h3>No Ticket Selected</h3>
+                <p>Select an assigned ticket from the list to view its conversation details, AI triage priority, and
+                    action blueprint.</p>
+            </div>
+
+            <!-- Detail layout template (hidden initially) -->
+            <div class="detail-container" id="detail-active-view" style="display: none;">
+                <!-- Filled dynamically by JavaScript -->
+            </div>
+        </section>
+    </main>
+
+    <script src="triage_data.js"></script>
+    <script>
+        if (typeof TRIAGE_DATA === 'undefined') { var TRIAGE_DATA = []; }
+        let selectedTicketId = null;
+    </script>
+    <script src="dashboard.js"></script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
