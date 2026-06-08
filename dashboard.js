@@ -1,6 +1,7 @@
 let activeBuildingFilter = 'all';
 let activePriorityFilter = 'all';
 let searchQuery = '';
+let selectedTicketId = null;
 
 // DOM elements
 const ticketListContainer = document.getElementById('ticket-list-container');
