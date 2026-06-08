@@ -64,66 +64,73 @@ function matchesBuildingFilter(ticket, filter) {
 
 // Render ticket cards list efficiently using Map join and event delegation
 function renderTicketList() {
-    const query = searchQuery.toLowerCase().trim();
+    try {
+        const query = searchQuery.toLowerCase().trim();
 
-    const filtered = TRIAGE_DATA.filter(ticket => {
-        const matchesSearch = query === '' ||
-            ticket.id.toString().includes(query) ||
-            ticket.subject.toLowerCase().includes(query) ||
-            ticket.description.toLowerCase().includes(query) ||
-            ticket.from.toLowerCase().includes(query) ||
-            ticket.fromEmail.toLowerCase().includes(query);
+        const filtered = TRIAGE_DATA.filter(ticket => {
+            const matchesSearch = query === '' ||
+                ticket.id.toString().includes(query) ||
+                ticket.subject.toLowerCase().includes(query) ||
+                ticket.description.toLowerCase().includes(query) ||
+                ticket.from.toLowerCase().includes(query) ||
+                ticket.fromEmail.toLowerCase().includes(query);
 
-        const matchesBuilding = matchesBuildingFilter(ticket, activeBuildingFilter);
-        const matchesPriority = activePriorityFilter === 'all' || (ticket.ai_triage?.priority || 'Medium') === activePriorityFilter;
+            const matchesBuilding = matchesBuildingFilter(ticket, activeBuildingFilter);
+            const matchesPriority = activePriorityFilter === 'all' || (ticket.ai_triage?.priority || 'Medium') === activePriorityFilter;
 
-        return matchesSearch && matchesBuilding && matchesPriority;
-    });
+            return matchesSearch && matchesBuilding && matchesPriority;
+        });
 
-    if (filtered.length === 0) {
-        ticketListContainer.innerHTML = `
-            <div style="padding: 40px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
-                No tickets match the selected filters or search query.
-            </div>
-        `;
-        return;
-    }
-
-    const html = filtered.map(ticket => {
-        const isSelected = selectedTicketId === ticket.id;
-        let buildingClass = 'building-district';
-        let buildingLabel = 'District';
-        const location = (ticket.ai_triage?.location || 'District/Other').toLowerCase();
-        if (location.includes('bps') || location.includes('primary')) {
-            buildingClass = 'building-bps';
-            buildingLabel = 'BPS';
-        } else if (location.includes('bis') || location.includes('intermediate')) {
-            buildingClass = 'building-bis';
-            buildingLabel = 'BIS';
+        if (filtered.length === 0) {
+            ticketListContainer.innerHTML = `
+                <div style="padding: 40px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                    No tickets match the selected filters or search query.
+                </div>
+            `;
+            return;
         }
 
-        const staleBadge = ticket.ai_triage?.stale_alert ? `<span class="stale-pill">&#9888; Stale</span>` : '';
-        const priorityText = ticket.ai_triage?.priority || 'Medium';
+        const html = filtered.map(ticket => {
+            const isSelected = selectedTicketId === ticket.id;
+            let buildingClass = 'building-district';
+            let buildingLabel = 'District';
+            const location = (ticket.ai_triage?.location || 'District/Other').toLowerCase();
+            if (location.includes('bps') || location.includes('primary')) {
+                buildingClass = 'building-bps';
+                buildingLabel = 'BPS';
+            } else if (location.includes('bis') || location.includes('intermediate')) {
+                buildingClass = 'building-bis';
+                buildingLabel = 'BIS';
+            }
 
-        return `
-            <div class="ticket-card ${isSelected ? 'selected' : ''}" data-id="${ticket.id}">
-                <div class="ticket-card-header">
-                    <span class="ticket-id-tag">#${ticket.id}</span>
-                    <div class="ticket-badges">
-                        ${staleBadge}
-                        <span class="ticket-building ${buildingClass}">${buildingLabel}</span>
+            const staleBadge = ticket.ai_triage?.stale_alert ? `<span class="stale-pill">&#9888; Stale</span>` : '';
+            const priorityText = ticket.ai_triage?.priority || 'Medium';
+
+            return `
+                <div class="ticket-card ${isSelected ? 'selected' : ''}" data-id="${ticket.id}">
+                    <div class="ticket-card-header">
+                        <span class="ticket-id-tag">#${ticket.id}</span>
+                        <div class="ticket-badges">
+                            ${staleBadge}
+                            <span class="ticket-building ${buildingClass}">${buildingLabel}</span>
+                        </div>
+                    </div>
+                    <div class="ticket-subject">${ticket.subject}</div>
+                    <div class="ticket-meta">
+                        <span class="ticket-submitter">${ticket.from}</span>
+                        <span class="priority-badge badge-${priorityText.toLowerCase()}">${priorityText}</span>
                     </div>
                 </div>
-                <div class="ticket-subject">${ticket.subject}</div>
-                <div class="ticket-meta">
-                    <span class="ticket-submitter">${ticket.from}</span>
-                    <span class="priority-badge badge-${priorityText.toLowerCase()}">${priorityText}</span>
-                </div>
-            </div>
-        `;
-    }).join('');
+            `;
+        }).join('');
 
-    ticketListContainer.innerHTML = html;
+        ticketListContainer.innerHTML = html;
+    } catch (e) {
+        console.error('Error rendering tickets:', e);
+        ticketListContainer.innerHTML = `<div style="padding: 40px; text-align: center; color: var(--color-critical); font-size: 0.85rem;">
+            An error occurred while rendering tickets. Please try again later.
+        </div>`;
+    }
 }
 
 // Highlight a single ticket and load details pane in place (highly optimized O(1) DOM updates)
