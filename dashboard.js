@@ -18,26 +18,64 @@ function debounce(func, wait) {
     };
 }
 
+// --- Location helpers ---
+
+function getLocationOverrides() {
+    try {
+        return JSON.parse(localStorage.getItem('jitbit_cockpit_location_overrides') || '{}');
+    } catch { return {}; }
+}
+
+// Returns the effective location string for a ticket (manual override takes priority over AI)
+function getEffectiveLocation(ticket) {
+    const overrides = getLocationOverrides();
+    const overrideKey = overrides[ticket.id];
+    if (overrideKey) {
+        const locs = typeof LOCATIONS !== 'undefined' ? LOCATIONS : [];
+        const loc = locs.find(l => l.key === overrideKey);
+        if (loc) return `${loc.key} (${loc.label})`;
+    }
+    return ticket.ai_triage?.location || 'District/Other';
+}
+
+// Matches a location string against LOCATIONS config, returns { key, colorIndex }
+function resolveLocationInfo(locationStr) {
+    const locs = typeof LOCATIONS !== 'undefined' ? LOCATIONS : [];
+    const lower = (locationStr || '').toLowerCase();
+    for (let i = 0; i < locs.length; i++) {
+        if (lower.includes(locs[i].key.toLowerCase())) {
+            return { key: locs[i].key, colorIndex: i };
+        }
+    }
+    return { key: 'Other', colorIndex: -1 };
+}
+
+// Save a manual location override for a ticket, then re-render
+function setTicketLocation(ticketId, locationKey) {
+    const overrides = getLocationOverrides();
+    if (locationKey === '') {
+        delete overrides[ticketId];
+    } else {
+        overrides[ticketId] = locationKey;
+    }
+    localStorage.setItem('jitbit_cockpit_location_overrides', JSON.stringify(overrides));
+    renderTicketList();
+    selectTicket(ticketId);
+}
+
+// --- KPIs ---
+
 // Render KPIs in a single, high-performance O(N) loop
 function calculateKPIs() {
-    let total = 0;
-    let urgent = 0;
-    let stale = 0;
-    let project = 0;
+    let total = 0, urgent = 0, stale = 0, project = 0;
 
     for (let i = 0; i < TRIAGE_DATA.length; i++) {
         const t = TRIAGE_DATA[i];
         total++;
         const p = t.ai_triage?.priority;
-        if (p === 'Critical' || p === 'High') {
-            urgent++;
-        }
-        if (t.ai_triage?.stale_alert) {
-            stale++;
-        }
-        if (t.status === 'Project') {
-            project++;
-        }
+        if (p === 'Critical' || p === 'High') urgent++;
+        if (t.ai_triage?.stale_alert) stale++;
+        if (t.status === 'Project') project++;
     }
 
     document.getElementById('kpi-total-backlog').innerText = total;
@@ -53,17 +91,15 @@ function formatDate(isoString) {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 }
 
-// Check if ticket building location matches filter
+// Check if ticket building location matches the active filter
 function matchesBuildingFilter(ticket, filter) {
     if (filter === 'all') return true;
-    const building = (ticket.ai_triage?.location || 'District/Other').toLowerCase();
-    if (filter === 'bps') return building.includes('bps') || building.includes('primary');
-    if (filter === 'bis') return building.includes('bis') || building.includes('intermediate');
-    if (filter === 'other') return !building.includes('bps') && !building.includes('primary') && !building.includes('bis') && !building.includes('intermediate');
-    return true;
+    const effectiveLocation = getEffectiveLocation(ticket);
+    if (filter === 'other') return resolveLocationInfo(effectiveLocation).colorIndex === -1;
+    return effectiveLocation.toLowerCase().includes(filter.toLowerCase());
 }
 
-// Render ticket cards list efficiently using Map join and event delegation
+// Render ticket cards list efficiently using map/join and event delegation
 function renderTicketList() {
     try {
         const query = searchQuery.toLowerCase().trim();
@@ -93,16 +129,9 @@ function renderTicketList() {
 
         const html = filtered.map(ticket => {
             const isSelected = selectedTicketId === ticket.id;
-            let buildingClass = 'building-district';
-            let buildingLabel = 'District';
-            const location = (ticket.ai_triage?.location || 'District/Other').toLowerCase();
-            if (location.includes('bps') || location.includes('primary')) {
-                buildingClass = 'building-bps';
-                buildingLabel = 'BPS';
-            } else if (location.includes('bis') || location.includes('intermediate')) {
-                buildingClass = 'building-bis';
-                buildingLabel = 'BIS';
-            }
+            const effectiveLocation = getEffectiveLocation(ticket);
+            const { key: locKey, colorIndex } = resolveLocationInfo(effectiveLocation);
+            const buildingClass = colorIndex >= 0 ? `building-color-${colorIndex % 6}` : 'building-other';
 
             const staleBadge = ticket.ai_triage?.stale_alert ? `<span class="stale-pill">&#9888; Stale</span>` : '';
             const priorityText = ticket.ai_triage?.priority || 'Medium';
@@ -113,7 +142,7 @@ function renderTicketList() {
                         <span class="ticket-id-tag">#${ticket.id}</span>
                         <div class="ticket-badges">
                             ${staleBadge}
-                            <span class="ticket-building ${buildingClass}">${buildingLabel}</span>
+                            <span class="ticket-building ${buildingClass}">${locKey}</span>
                         </div>
                     </div>
                     <div class="ticket-subject">${ticket.subject}</div>
@@ -134,9 +163,8 @@ function renderTicketList() {
     }
 }
 
-// Highlight a single ticket and load details pane in place (highly optimized O(1) DOM updates)
+// Highlight a single ticket and load details pane in place
 function selectTicket(id) {
-    // Un-select previous card
     if (selectedTicketId !== null) {
         const prevCard = ticketListContainer.querySelector(`.ticket-card[data-id="${selectedTicketId}"]`);
         if (prevCard) prevCard.classList.remove('selected');
@@ -144,7 +172,6 @@ function selectTicket(id) {
 
     selectedTicketId = id;
 
-    // Select new card
     const newCard = ticketListContainer.querySelector(`.ticket-card[data-id="${selectedTicketId}"]`);
     if (newCard) newCard.classList.add('selected');
 
@@ -154,12 +181,12 @@ function selectTicket(id) {
     emptyStateView.style.display = 'none';
     detailActiveView.style.display = 'flex';
 
-    // Construct comments list
+    // Build comments HTML
     let commentsHtml = '';
     if (ticket.conversation && ticket.conversation.length > 0) {
         ticket.conversation.forEach(comment => {
             const isTech = (comment.email || comment.sender || '').toLowerCase().includes(typeof TECHNICIAN_USERNAME !== 'undefined' ? TECHNICIAN_USERNAME.toLowerCase() : 'tech');
-            const cleanBody = comment.body.replace(/^\u003c!--html--\u003e/i, '').trim();
+            const cleanBody = comment.body.replace(/^<!--html-->/i, '').trim();
             commentsHtml += `
                 <div class="comment-node ${isTech ? 'tech-sender' : ''}">
                     <div class="comment-header">
@@ -174,7 +201,7 @@ function selectTicket(id) {
         commentsHtml = `<div style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 12px 0;">No comments in thread.</div>`;
     }
 
-    // Construct checklist
+    // Build checklist HTML
     let checklistHtml = '';
     if (ticket.ai_triage?.recommended_actions && ticket.ai_triage.recommended_actions.length > 0) {
         ticket.ai_triage.recommended_actions.forEach((action, index) => {
@@ -187,10 +214,17 @@ function selectTicket(id) {
         });
     }
 
+    // Build location override dropdown
+    const locs = typeof LOCATIONS !== 'undefined' ? LOCATIONS : [];
+    const overrides = getLocationOverrides();
+    const currentOverride = overrides[ticket.id] || '';
+    const locOptions = locs.map(loc =>
+        `<option value="${loc.key}" ${currentOverride === loc.key ? 'selected' : ''}>${loc.key} — ${loc.label}</option>`
+    ).join('');
+
     const priorityText = ticket.ai_triage?.priority || 'Medium';
     const priorityClass = priorityText.toLowerCase();
 
-    // Populate the active view details container
     detailActiveView.innerHTML = `
         <div class="detail-header">
             <div class="detail-header-top">
@@ -221,15 +255,14 @@ function selectTicket(id) {
                 </div>
             </div>
         </div>
-        
+
         <div class="detail-content-split">
-            <!-- Left Column: Details & Thread -->
             <div class="detail-left">
                 <div>
                     <div class="section-title">Description</div>
                     <div class="description-box">${ticket.description}</div>
                 </div>
-                
+
                 <div>
                     <div class="section-title">Conversation Thread</div>
                     <div class="comments-timeline">
@@ -237,23 +270,25 @@ function selectTicket(id) {
                     </div>
                 </div>
             </div>
-            
-            <!-- Right Column: AI Triage Panel -->
+
             <div class="detail-right">
                 <div class="triage-card card-${priorityClass}">
                     <div class="triage-badge-row">
                         <span class="triage-badge-label">AI Triage Analysis</span>
                         <span class="priority-badge badge-${priorityClass}">${priorityText} Priority</span>
                     </div>
-                    
+
                     <div class="justification-text">
                         <strong>Justification:</strong> ${ticket.ai_triage?.justification || 'No justification provided.'}
                     </div>
-                    
+
                     <div class="meta-pill-grid">
                         <div class="meta-detail-pill">
                             <div>Location</div>
-                            <p>${ticket.ai_triage?.location || 'District/Other'}</p>
+                            <select class="location-override-select" onchange="setTicketLocation(${ticket.id}, this.value)">
+                                <option value="" ${!currentOverride ? 'selected' : ''}>Auto: ${ticket.ai_triage?.location || 'District/Other'}</option>
+                                ${locOptions}
+                            </select>
                         </div>
                         <div class="meta-detail-pill">
                             <div>Classroom</div>
@@ -271,8 +306,7 @@ function selectTicket(id) {
                         </div>
                     </div>
                 </div>
-                
-                <!-- Checklist -->
+
                 <div>
                     <div class="section-title">Resolution Blueprint</div>
                     <div class="triage-card" style="padding: 16px;">
@@ -281,8 +315,7 @@ function selectTicket(id) {
                         </div>
                     </div>
                 </div>
-                
-                <!-- Suggested Draft Response -->
+
                 <div class="draft-box-wrapper">
                     <div class="draft-header-row">
                         <div class="section-title" style="margin-bottom: 0;">Draft Response</div>
@@ -317,24 +350,38 @@ function copyDraftResponse() {
     navigator.clipboard.writeText(draftText).then(() => {
         const toast = document.getElementById('copy-toast-notification');
         toast.classList.add('show');
-        setTimeout(() => {
-            toast.classList.remove('show');
-        }, 2000);
+        setTimeout(() => { toast.classList.remove('show'); }, 2000);
     });
 }
 
-// Setup filter click handlers and event listeners
-function setupFilters() {
-    // Location pills
-    const buildingPills = document.querySelectorAll('#filter-building-group .filter-pill');
-    buildingPills.forEach(pill => {
+// Build location filter pills dynamically from the LOCATIONS config constant
+function buildLocationPills() {
+    const group = document.getElementById('filter-building-group');
+    const locs = typeof LOCATIONS !== 'undefined' ? LOCATIONS : [];
+
+    const dynamicPills = locs.map(loc =>
+        `<span class="filter-pill" data-filter="${loc.key.toLowerCase()}">${loc.key}</span>`
+    ).join('');
+
+    group.innerHTML = `
+        <span class="filter-pill active" data-filter="all">All Locations</span>
+        ${dynamicPills}
+        <span class="filter-pill" data-filter="other">Other</span>
+    `;
+
+    group.querySelectorAll('.filter-pill').forEach(pill => {
         pill.addEventListener('click', () => {
-            buildingPills.forEach(p => p.classList.remove('active'));
+            group.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
             activeBuildingFilter = pill.dataset.filter;
             renderTicketList();
         });
     });
+}
+
+// Setup filter click handlers and event listeners
+function setupFilters() {
+    buildLocationPills();
 
     // Priority pills
     const priorityPills = document.querySelectorAll('#filter-priority-group .filter-pill');
@@ -363,9 +410,50 @@ function setupFilters() {
     });
 }
 
+function updateSyncStatus() {
+    const badge = document.getElementById('status-badge');
+    const dot = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+
+    if (typeof LAST_SYNC === 'undefined') {
+        badge.className = 'status-badge status-unknown';
+        dot.className = 'status-dot';
+        text.textContent = 'No sync data';
+        return;
+    }
+
+    const ageMs = Date.now() - new Date(LAST_SYNC).getTime();
+    const ageMin = Math.floor(ageMs / 60000);
+    const ageHours = ageMin / 60;
+
+    let label;
+    if (ageMin < 60) {
+        label = `Synced ${ageMin} min ago`;
+    } else {
+        const h = Math.floor(ageHours);
+        label = `Synced ${h} h ago`;
+    }
+
+    if (ageHours < 2) {
+        badge.className = 'status-badge';
+        dot.className = 'status-dot';
+    } else if (ageHours < 4) {
+        badge.className = 'status-badge status-warn';
+        dot.className = 'status-dot';
+        label += ' — check sync';
+    } else {
+        badge.className = 'status-badge status-stale';
+        dot.className = 'status-dot';
+        label += ' — data stale';
+    }
+
+    text.textContent = label;
+}
+
 // Initialize Cockpit App
 window.addEventListener('DOMContentLoaded', () => {
     calculateKPIs();
     renderTicketList();
     setupFilters();
+    updateSyncStatus();
 });

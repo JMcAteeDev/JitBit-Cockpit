@@ -24,9 +24,9 @@
                 <span>Intelligent AI Triage Dashboard</span>
             </div>
         </div>
-        <div class="status-badge">
-            <div class="status-dot"></div>
-            <span>Antigravity Triage Active</span>
+        <div class="status-badge" id="status-badge">
+            <div class="status-dot" id="status-dot"></div>
+            <span id="status-text">Loading...</span>
         </div>
     </header>
 
@@ -70,12 +70,9 @@
                         placeholder="Search by subject, body, sender...">
                 </div>
 
-                <!-- Quick Location Filters -->
+                <!-- Quick Location Filters (pills generated dynamically from LOCATIONS config) -->
                 <div class="filter-group" id="filter-building-group">
                     <span class="filter-pill active" data-filter="all">All Locations</span>
-                    <span class="filter-pill" data-filter="bps">BPS</span>
-                    <span class="filter-pill" data-filter="bis">BIS</span>
-                    <span class="filter-pill" data-filter="other">District/Other</span>
                 </div>
 
                 <!-- Priority Filters -->

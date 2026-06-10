@@ -19,6 +19,7 @@ $TenantUrl = ""
 $Username = ""
 $Password = ""
 $OpenRouterApiKey = ""
+$LocationsRaw = ""
 
 # Load from .env file if it exists
 if (Test-Path $EnvFile) {
@@ -31,6 +32,7 @@ if (Test-Path $EnvFile) {
             elseif ($Key -eq "JITBIT_USERNAME") { $Username = $Value }
             elseif ($Key -eq "JITBIT_PASSWORD") { $Password = $Value }
             elseif ($Key -eq "OPENROUTER_API_KEY") { $OpenRouterApiKey = $Value }
+            elseif ($Key -eq "LOCATIONS") { $LocationsRaw = $Value }
         }
     }
 }
@@ -57,7 +59,24 @@ if (-not $TenantUrl.StartsWith("http")) {
 Write-Host "Syncing with: $TenantUrl" -ForegroundColor Yellow
 Write-Host "User: $Username" -ForegroundColor Yellow
 
-# 2. Build Authentication Header (Bearer Token)
+# Parse LOCATIONS from .env (format: KEY:Full Name,KEY2:Full Name2,...)
+$LocationList = @()
+if (-not [string]::IsNullOrEmpty($LocationsRaw)) {
+    foreach ($entry in $LocationsRaw.Split(',')) {
+        $parts = $entry.Trim().Split(':')
+        if ($parts.Length -ge 2) {
+            $LocationList += @{
+                key   = $parts[0].Trim()
+                label = ($parts[1..($parts.Length - 1)] -join ':').Trim()
+            }
+        }
+    }
+    Write-Host "Loaded $($LocationList.Count) location(s): $(($LocationList | ForEach-Object { $_.key }) -join ', ')" -ForegroundColor Gray
+} else {
+    Write-Host "No LOCATIONS configured in .env - location detection will be skipped." -ForegroundColor Yellow
+}
+
+# 2. Build Authentication Header
 $Headers = @{
     "Authorization" = "Bearer $Password"
     "Accept"        = "application/json"
@@ -262,17 +281,16 @@ foreach ($ticket in $LiveTickets) {
     $StaleDays = [Math]::Floor(((Get-Date) - $CreatedDate).TotalDays)
     $StaleAlert = ($StaleDays -gt 14) -and ($ticket.Status -ne "Closed")
 
-    # Inferred Location
+    # Inferred Location — keyword match against configured LOCATIONS list
     $Location = "District/Other"
     $SubjectLower = $ticket.Subject.ToLower()
     $DescLower = $Description.ToLower()
 
-    if ($SubjectLower.Contains("bps") -or $DescLower.Contains("bps") -or $DescLower.Contains("primary")) {
-        $Location = "BPS (Bolivar Primary School)"
-    } elseif ($SubjectLower.Contains("bis") -or $DescLower.Contains("bis") -or $DescLower.Contains("intermediate")) {
-        $Location = "BIS (Bolivar Intermediate School)"
-    } elseif ($SubjectLower.Contains("bhs") -or $DescLower.Contains("bhs") -or $DescLower.Contains("high school")) {
-        $Location = "BHS (Bolivar High School)"
+    foreach ($loc in $LocationList) {
+        if ($SubjectLower.Contains($loc.key.ToLower()) -or $DescLower.Contains($loc.key.ToLower())) {
+            $Location = "$($loc.key) ($($loc.label))"
+            break
+        }
     }
 
     # Check if we already have this ticket in our database to preserve AI triage
@@ -343,7 +361,7 @@ foreach ($ticket in $LiveTickets) {
                 "Physically inspect or contact $SubmitterName regarding: $($ticket.Subject)",
                 "Resolve core issues and update the ticket status."
             )
-            $DraftResponse = "Hi $SubmitterName,`n`nThank you for reaching out! I have received your ticket regarding '$($ticket.Subject)'. I am looking into this and will be by to assist you shortly.`n`nBest,`nJoshua"
+            $DraftResponse = "Hi $SubmitterName,`n`nThank you for reaching out! I have received your ticket regarding '$($ticket.Subject)'. I am looking into this and will be by to assist you shortly.`n`nBest,`n$TechUserPrefix"
         }
 
         $AiTriage = @{
@@ -388,7 +406,12 @@ $TriageJsFile = Join-Path $ScriptDir "triage_data.js"
 try {
     Write-Host "Writing triage_data.js with live data..." -ForegroundColor Cyan
     $TechUserPrefix = $Username.Split('@')[0]
-    $JsContent = "const JITBIT_TENANT_URL = '$TenantUrl';`r`nconst TECHNICIAN_USERNAME = '$TechUserPrefix';`r`nconst TRIAGE_DATA = $JsonOutput;"
+    $SyncTimestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+    $LocationsJs = if ($LocationList.Count -gt 0) {
+        $entries = $LocationList | ForEach-Object { "{`"key`":`"$($_.key)`",`"label`":`"$($_.label)`"}" }
+        "[" + ($entries -join ",") + "]"
+    } else { "[]" }
+    $JsContent = "const JITBIT_TENANT_URL = '$TenantUrl';`r`nconst TECHNICIAN_USERNAME = '$TechUserPrefix';`r`nconst LAST_SYNC = '$SyncTimestamp';`r`nconst LOCATIONS = $LocationsJs;`r`nconst TRIAGE_DATA = $JsonOutput;"
     Set-Content -Path $TriageJsFile -Value $JsContent -Encoding utf8
     Write-Host "triage_data.js updated successfully!" -ForegroundColor Green
 } catch {
