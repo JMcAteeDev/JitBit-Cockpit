@@ -56,6 +56,9 @@ if (-not $TenantUrl.StartsWith("http")) {
     $TenantUrl = "https://" + $TenantUrl
 }
 
+# Derive tech prefix early -- used in heuristic fallback draft responses
+$TechUserPrefix = $Username.Split('@')[0]
+
 Write-Host "Syncing with: $TenantUrl" -ForegroundColor Yellow
 Write-Host "User: $Username" -ForegroundColor Yellow
 
@@ -104,27 +107,33 @@ function Invoke-AITriage {
         [array]$Comments
     )
 
+    # Strip HTML tags from text for clean AI prompt input
+    $StripHtml = { param($t) ($t -replace '<[^>]+>', ' ' -replace '\s+', ' ').Trim() }
+
+    $CleanDescription = & $StripHtml $Description
+
     $ConversationText = ""
     if ($Comments.Count -gt 0) {
-        $ConversationText = "`n`nConversation thread:`n"
+        $ConversationText = "`n`nConversation thread (oldest to newest):`n"
         foreach ($c in $Comments) {
-            $ConversationText += "[$($c.date)] $($c.sender): $($c.body)`n"
+            $CleanBody = & $StripHtml $c.body
+            $ConversationText += "[$($c.date)] $($c.sender): $CleanBody`n"
         }
     }
 
     $Prompt = @"
-You are a school IT helpdesk triage assistant. Analyze this support ticket and respond with ONLY a valid JSON object — no markdown fences, no explanation, nothing else.
+You are a front-line school IT technician writing a triage analysis for your own queue. Analyze this support ticket and respond with ONLY a valid JSON object -- no markdown fences, no explanation, nothing else.
 
 Ticket Subject: $Subject
 Submitted by: $SubmitterName
-Description: $Description$ConversationText
+Description: $CleanDescription$ConversationText
 
 Return exactly this JSON structure:
 {
   "priority": "Critical|High|Medium|Low",
   "justification": "One sentence explaining the priority.",
   "recommended_actions": ["Action 1", "Action 2", "Action 3"],
-  "draft_response": "A professional, friendly reply to the submitter."
+  "draft_response": "A first-person reply written as yourself, the IT technician, directly to $SubmitterName. If a conversation thread is present, acknowledge the most recent message and continue the conversation naturally. Do not sign off with a name."
 }
 
 Priority guide:
@@ -330,7 +339,7 @@ foreach ($ticket in $LiveTickets) {
         $AiResult = $null
 
         if (-not [string]::IsNullOrEmpty($OpenRouterApiKey) -and $OpenRouterApiKey -ne "YOUR_OPENROUTER_API_KEY_HERE") {
-            Write-Host "  -> New ticket! Calling AI triage (Gemma via OpenRouter)..." -ForegroundColor Blue
+            Write-Host "  -> New ticket! Calling AI triage (via OpenRouter)..." -ForegroundColor Blue
             Start-Sleep -Seconds 10
             $AiResult = Invoke-AITriage -ApiKey $OpenRouterApiKey -Subject $ticket.Subject -Description $Description -SubmitterName $SubmitterName -Comments $Comments
         }
@@ -405,7 +414,6 @@ Write-Host "Updated triage_data.json successfully with $($ProcessedTickets.Count
 $TriageJsFile = Join-Path $ScriptDir "triage_data.js"
 try {
     Write-Host "Writing triage_data.js with live data..." -ForegroundColor Cyan
-    $TechUserPrefix = $Username.Split('@')[0]
     $SyncTimestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
     $LocationsJs = if ($LocationList.Count -gt 0) {
         $entries = $LocationList | ForEach-Object { "{`"key`":`"$($_.key)`",`"label`":`"$($_.label)`"}" }
