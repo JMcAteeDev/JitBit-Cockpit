@@ -17,7 +17,28 @@ $HtmlPath = Join-Path $ScriptDir "dashboard.html"
 if (Test-Path $PngPath) {
     Write-Host "Converting logo.png to logo.ico..." -ForegroundColor Gray
     try {
-        $PngBytes = [System.IO.File]::ReadAllBytes($PngPath)
+        # Load and resize logo.png to 256x256 to ensure Windows compatibility
+        Add-Type -AssemblyName System.Drawing
+        $OriginalBmp = [System.Drawing.Bitmap]::FromFile($PngPath)
+        $ResizedBmp = New-Object System.Drawing.Bitmap(256, 256)
+        $Graphics = [System.Drawing.Graphics]::FromImage($ResizedBmp)
+
+        # Set high quality resize settings
+        $Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+        $Graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+        $Graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+        $Graphics.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
+
+        $Graphics.DrawImage($OriginalBmp, 0, 0, 256, 256)
+
+        $Ms = New-Object System.IO.MemoryStream
+        $ResizedBmp.Save($Ms, [System.Drawing.Imaging.ImageFormat]::Png)
+        $PngBytes = $Ms.ToArray()
+
+        $Ms.Dispose()
+        $Graphics.Dispose()
+        $ResizedBmp.Dispose()
+        $OriginalBmp.Dispose()
 
         # 22-byte ICO header for a single 256x256 image
         $IcoHeader = [byte[]]@(
@@ -78,6 +99,20 @@ try {
     }
     
     $Shortcut.Save()
+
+    # Notify Windows Explorer of change to rebuild the icon cache immediately
+    try {
+        if (-not ([System.Management.Automation.PSTypeName]"Win32.Shell32").Type) {
+            $Signature = @"
+            [System.Runtime.InteropServices.DllImport("shell32.dll")]
+            public static extern void SHChangeNotify(int wEventId, int uFlags, System.IntPtr dwItem1, System.IntPtr dwItem2);
+"@
+            Add-Type -MemberDefinition $Signature -Name "Shell32" -Namespace "Win32" -ErrorAction SilentlyContinue
+        }
+        [Win32.Shell32]::SHChangeNotify(0x08000000, 0x0000, [System.IntPtr]::Zero, [System.IntPtr]::Zero)
+    } catch {
+        # Fallback if Add-Type fails or is restricted
+    }
     
     Write-Host "=========================================" -ForegroundColor Green
     Write-Host "  SHORTCUT CREATED ON YOUR DESKTOP!      " -ForegroundColor Green
