@@ -22,10 +22,12 @@ You should see these files inside:
 
 | File | What it does |
 |---|---|
-| `dashboard.html` | The dashboard — double-click this to open it |
-| `refresh_from_api.ps1` | The sync script — run this to pull your tickets |
-| `setup_scheduler.ps1` | Optional — sets up automatic hourly syncing |
-| `.env` | Your credentials — **you create this in Step 2** |
+| `dashboard.html` | The dashboard -- double-click this to open it |
+| `refresh_from_api.ps1` | The sync script -- run this to pull your tickets |
+| `setup_scheduler.ps1` | Optional -- sets up automatic hourly syncing |
+| `create_shortcut.ps1` | Optional -- creates a Desktop shortcut with a custom logo |
+| `logo.png` | The app icon logo for the shortcut |
+| `.env` | Your credentials -- **you create this in Step 2** |
 
 ---
 
@@ -120,6 +122,19 @@ To sync manually at any time, just run `refresh_from_api.ps1` again.
 
 ---
 
+## Step 6 (Optional) -- Create a Desktop Shortcut
+
+To create a quick-access shortcut directly on your Desktop with a custom app icon:
+
+1. Right-click `create_shortcut.ps1`
+2. Choose **Run with PowerShell**
+
+This will automatically:
+* Generate a Windows-compatible icon file (`logo.ico`) from `logo.png`
+* Create a shortcut named **JitBit Cockpit** on your Desktop pointing to your local `dashboard.html` using the custom icon.
+
+---
+
 ## Setting Location Manually on a Ticket
 
 If the AI couldn't detect a ticket's location automatically, you can set it yourself:
@@ -148,6 +163,18 @@ Run the sync script once after adding `LOCATIONS` to your `.env`. The locations 
 
 **"I see a security warning when opening the PowerShell script"**
 This is normal for downloaded scripts on Windows. Right-click → Properties → check **Unblock** at the bottom, then try running again. Or use the `ExecutionPolicy Bypass` command shown in Step 3.
+
+---
+
+## Repository Branches
+
+This repository uses a two-branch workflow:
+- **`main` (Stable)**: Contains stable, tested releases. Do not commit directly to this branch for feature development.
+- **`dev` (Development)**: The branch where new features, updates, and bug fixes are developed and tested before merging into `main`.
+
+To switch between branches:
+* To work on new features: `git checkout dev`
+* To switch back to stable: `git checkout main`
 
 ---
 
