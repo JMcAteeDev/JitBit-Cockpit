@@ -23,14 +23,38 @@ if (Test-Path $PngPath) {
         $ResizedBmp = New-Object System.Drawing.Bitmap(256, 256)
         $Graphics = [System.Drawing.Graphics]::FromImage($ResizedBmp)
 
+        # Clear background with transparency to remove white corners
+        $Graphics.Clear([System.Drawing.Color]::Transparent)
+
         # Set high quality resize settings
         $Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
         $Graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
         $Graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
         $Graphics.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
 
+        # Create a rounded rectangle path to mask out the white corners
+        # Inset by 4 pixels to cut cleanly inside the white edge artifacts
+        $Path = New-Object System.Drawing.Drawing2D.GraphicsPath
+        $Inset = 4
+        $Radius = 36
+        $Dim = 256
+        $Size = $Dim - ($Inset * 2)
+        $Path.AddArc($Inset, $Inset, $Radius, $Radius, 180, 90)
+        $Path.AddArc(($Inset + $Size - $Radius), $Inset, $Radius, $Radius, 270, 90)
+        $Path.AddArc(($Inset + $Size - $Radius), ($Inset + $Size - $Radius), $Radius, $Radius, 0, 90)
+        $Path.AddArc($Inset, ($Inset + $Size - $Radius), $Radius, $Radius, 90, 90)
+        $Path.CloseAllFigures()
+
+        $Graphics.SetClip($Path)
         $Graphics.DrawImage($OriginalBmp, 0, 0, 256, 256)
 
+        # Release file handle on the original image before overwriting it
+        $OriginalBmp.Dispose()
+
+        # Save the rounded transparent version back to logo.png
+        $ResizedBmp.Save($PngPath, [System.Drawing.Imaging.ImageFormat]::Png)
+
+        # Save to memory stream for ICO conversion
         $Ms = New-Object System.IO.MemoryStream
         $ResizedBmp.Save($Ms, [System.Drawing.Imaging.ImageFormat]::Png)
         $PngBytes = $Ms.ToArray()
@@ -38,7 +62,6 @@ if (Test-Path $PngPath) {
         $Ms.Dispose()
         $Graphics.Dispose()
         $ResizedBmp.Dispose()
-        $OriginalBmp.Dispose()
 
         # 22-byte ICO header for a single 256x256 image
         $IcoHeader = [byte[]]@(
