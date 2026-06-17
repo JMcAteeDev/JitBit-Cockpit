@@ -111,8 +111,13 @@ try {
     $ShortcutPath = Join-Path $DesktopPath "JitBit Cockpit.lnk"
     
     $Shortcut = $WshShell.CreateShortcut($ShortcutPath)
-    $Shortcut.TargetPath = "explorer.exe"
-    $Shortcut.Arguments = "`"$HtmlPath`""
+    # Point directly at the dashboard so the default browser opens it via the
+    # file:// protocol. Do NOT route through explorer.exe: a shortcut that
+    # targets explorer.exe with a custom icon can poison the shell icon cache
+    # and make explorer.exe itself display this logo in Task Manager/taskbar.
+    # The .lnk IconLocation below is the supported way to set a custom icon.
+    $Shortcut.TargetPath = $HtmlPath
+    $Shortcut.Arguments = ""
     $Shortcut.WorkingDirectory = $ScriptDir
     $Shortcut.Description = "JitBit Cockpit AI-Triage Dashboard"
     
