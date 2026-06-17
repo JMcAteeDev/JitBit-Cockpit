@@ -114,6 +114,7 @@ header {
     letter-spacing: 0.02em;
     background: linear-gradient(90deg, #fff 0%, #cbd5e1 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
