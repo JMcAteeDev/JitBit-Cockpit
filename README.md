@@ -151,6 +151,18 @@ This is normal for downloaded scripts on Windows. Right-click → Properties →
 
 ---
 
+## Repository Branches
+
+This repository uses a two-branch workflow:
+- **`main` (Stable)**: Contains stable, tested releases. Do not commit directly to this branch for feature development.
+- **`dev` (Development)**: The branch where new features, updates, and bug fixes are developed and tested before merging into `main`.
+
+To switch between branches:
+* To work on new features: `git checkout dev`
+* To switch back to stable: `git checkout main`
+
+---
+
 ## Privacy
 
 - Your JitBit credentials never leave your machine
