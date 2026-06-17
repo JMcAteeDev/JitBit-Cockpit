@@ -67,7 +67,8 @@ try {
     $ShortcutPath = Join-Path $DesktopPath "JitBit Cockpit.lnk"
     
     $Shortcut = $WshShell.CreateShortcut($ShortcutPath)
-    $Shortcut.TargetPath = $HtmlPath
+    $Shortcut.TargetPath = "explorer.exe"
+    $Shortcut.Arguments = "`"$HtmlPath`""
     $Shortcut.WorkingDirectory = $ScriptDir
     $Shortcut.Description = "JitBit Cockpit AI-Triage Dashboard"
     
