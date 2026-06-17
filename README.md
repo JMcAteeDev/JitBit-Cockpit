@@ -22,10 +22,12 @@ You should see these files inside:
 
 | File | What it does |
 |---|---|
-| `dashboard.html` | The dashboard — double-click this to open it |
-| `refresh_from_api.ps1` | The sync script — run this to pull your tickets |
-| `setup_scheduler.ps1` | Optional — sets up automatic hourly syncing |
-| `.env` | Your credentials — **you create this in Step 2** |
+| `dashboard.html` | The dashboard -- double-click this to open it |
+| `refresh_from_api.ps1` | The sync script -- run this to pull your tickets |
+| `setup_scheduler.ps1` | Optional -- sets up automatic hourly syncing |
+| `create_shortcut.ps1` | Optional -- creates a Desktop shortcut with a custom logo |
+| `logo.png` | The app icon logo for the shortcut |
+| `.env` | Your credentials -- **you create this in Step 2** |
 
 ---
 
@@ -117,6 +119,19 @@ To have the dashboard update itself every hour while you're at work:
 This registers a Windows Task Scheduler job that runs the sync script every hour from **6 AM to 6 PM, Monday through Friday**. You don't need to do anything after that — the dashboard will always be fresh when you open it.
 
 To sync manually at any time, just run `refresh_from_api.ps1` again.
+
+---
+
+## Step 6 (Optional) -- Create a Desktop Shortcut
+
+To create a quick-access shortcut directly on your Desktop with a custom app icon:
+
+1. Right-click `create_shortcut.ps1`
+2. Choose **Run with PowerShell**
+
+This will automatically:
+* Generate a Windows-compatible icon file (`logo.ico`) from `logo.png`
+* Create a shortcut named **JitBit Cockpit** on your Desktop pointing to your local `dashboard.html` using the custom icon.
 
 ---
 
