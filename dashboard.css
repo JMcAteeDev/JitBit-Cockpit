@@ -924,11 +924,39 @@ header {
     white-space: pre-wrap;
 }
 
+.draft-box:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
 .draft-header-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 8px;
+}
+
+.draft-edited-tag {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-color);
+    border-radius: 99px;
+    padding: 1px 8px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.draft-reset-btn {
+    background-color: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.draft-reset-btn:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+    color: #fff;
 }
 
 .copy-btn {
