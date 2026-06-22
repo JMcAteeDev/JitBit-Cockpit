@@ -63,6 +63,48 @@ function setTicketLocation(ticketId, locationKey) {
     selectTicket(ticketId);
 }
 
+// --- Per-ticket checklist & draft persistence ---
+
+function getTicketWorkState() {
+    try {
+        return JSON.parse(localStorage.getItem('jitbit_cockpit_ticket_state') || '{}');
+    } catch { return {}; }
+}
+
+function saveTicketWorkState(state) {
+    localStorage.setItem('jitbit_cockpit_ticket_state', JSON.stringify(state));
+}
+
+// Toggle a checklist item's checked state for a ticket and persist it
+function setChecklistChecked(ticketId, index, checked) {
+    const state = getTicketWorkState();
+    const entry = state[ticketId] || {};
+    const checklist = entry.checklist || {};
+    checklist[index] = checked;
+    entry.checklist = checklist;
+    state[ticketId] = entry;
+    saveTicketWorkState(state);
+}
+
+// Persist edited draft response text for a ticket (debounced on input)
+function setDraftText(ticketId, text) {
+    const state = getTicketWorkState();
+    const entry = state[ticketId] || {};
+    entry.draft = text;
+    state[ticketId] = entry;
+    saveTicketWorkState(state);
+}
+
+// Clear a ticket's saved draft edit, reverting the box to the AI-generated draft
+function resetDraftText(ticketId) {
+    const state = getTicketWorkState();
+    if (state[ticketId]) {
+        delete state[ticketId].draft;
+    }
+    saveTicketWorkState(state);
+    selectTicket(ticketId);
+}
+
 // --- KPIs ---
 
 // Render KPIs in a single, high-performance O(N) loop
@@ -201,13 +243,16 @@ function selectTicket(id) {
         commentsHtml = `<div style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 12px 0;">No comments in thread.</div>`;
     }
 
-    // Build checklist HTML
+    // Build checklist HTML, restoring any previously saved checked state
+    const workState = getTicketWorkState()[ticket.id] || {};
+    const savedChecklist = workState.checklist || {};
     let checklistHtml = '';
     if (ticket.ai_triage?.recommended_actions && ticket.ai_triage.recommended_actions.length > 0) {
         ticket.ai_triage.recommended_actions.forEach((action, index) => {
+            const isChecked = !!savedChecklist[index];
             checklistHtml += `
-                <label class="checklist-item" id="chk-label-${index}">
-                    <input type="checkbox" class="checklist-checkbox" onchange="toggleChecklist(this, ${index})" />
+                <label class="checklist-item ${isChecked ? 'checked' : ''}" id="chk-label-${index}">
+                    <input type="checkbox" class="checklist-checkbox" ${isChecked ? 'checked' : ''} onchange="toggleChecklist(this, ${ticket.id}, ${index})" />
                     <span>${action}</span>
                 </label>
             `;
@@ -318,15 +363,18 @@ function selectTicket(id) {
 
                 <div class="draft-box-wrapper">
                     <div class="draft-header-row">
-                        <div class="section-title" style="margin-bottom: 0;">Draft Response</div>
-                        <button class="copy-btn" onclick="copyDraftResponse()">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:12px; height:12px;">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                            </svg>
-                            Copy Draft
-                        </button>
+                        <div class="section-title" style="margin-bottom: 0;">Draft Response ${workState.draft !== undefined ? '<span class="draft-edited-tag">Edited</span>' : ''}</div>
+                        <div style="display:flex; gap:6px;">
+                            ${workState.draft !== undefined ? `<button class="copy-btn draft-reset-btn" onclick="resetDraftText(${ticket.id})">Reset to AI Draft</button>` : ''}
+                            <button class="copy-btn" onclick="copyDraftResponse()">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:12px; height:12px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                </svg>
+                                Copy Draft
+                            </button>
+                        </div>
                     </div>
-                    <div class="draft-box" id="suggested-draft-box">${ticket.ai_triage?.draft_response || 'No draft template suggested for this inquiry.'}</div>
+                    <div class="draft-box" id="suggested-draft-box" contenteditable="true" oninput="onDraftInput(${ticket.id}, this)">${workState.draft !== undefined ? workState.draft : (ticket.ai_triage?.draft_response || 'No draft template suggested for this inquiry.')}</div>
                     <div class="copy-toast" id="copy-toast-notification">Copied to Clipboard!</div>
                 </div>
             </div>
@@ -334,14 +382,21 @@ function selectTicket(id) {
     `;
 }
 
-// Toggle action items checklist visual state
-function toggleChecklist(checkbox, index) {
+// Toggle action items checklist visual state and persist it
+function toggleChecklist(checkbox, ticketId, index) {
     const label = document.getElementById(`chk-label-${index}`);
     if (checkbox.checked) {
         label.classList.add('checked');
     } else {
         label.classList.remove('checked');
     }
+    setChecklistChecked(ticketId, index, checkbox.checked);
+}
+
+// Debounced save of draft edits as the technician types
+const debouncedSaveDraftText = debounce((ticketId, text) => setDraftText(ticketId, text), 400);
+function onDraftInput(ticketId, el) {
+    debouncedSaveDraftText(ticketId, el.innerText);
 }
 
 // Copy generated draft email to clipboard
@@ -450,10 +505,25 @@ function updateSyncStatus() {
     text.textContent = label;
 }
 
+// Open a ticket referenced by a #ticket-<id> URL hash (deep link from My Day)
+function openTicketFromHash() {
+    const match = /^#ticket-(\d+)$/.exec(window.location.hash);
+    if (!match) return;
+    const id = parseInt(match[1], 10);
+    if (!TRIAGE_DATA.some(t => t.id === id)) return;
+    selectTicket(id);
+    const card = ticketListContainer.querySelector(`.ticket-card[data-id="${id}"]`);
+    if (card) card.scrollIntoView({ block: 'center' });
+}
+
 // Initialize Cockpit App
 window.addEventListener('DOMContentLoaded', () => {
     calculateKPIs();
     renderTicketList();
     setupFilters();
     updateSyncStatus();
+    openTicketFromHash();
 });
+
+// Respond to hash changes while the dashboard is already open
+window.addEventListener('hashchange', openTicketFromHash);

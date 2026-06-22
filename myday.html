@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JitBit Cockpit | My Day</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="myday.css">
+</head>
+
+<body class="md-body">
+
+    <!-- Header -->
+    <header>
+        <div class="logo-section">
+            <img class="logo-img" src="logo.png" alt="JitBit Cockpit Logo">
+            <div class="logo-text">
+                <h1>JITBIT COCKPIT</h1>
+                <span>Your Daily Focus Plan</span>
+            </div>
+            <nav class="app-nav">
+                <a href="dashboard.html">Triage</a>
+                <a href="myday.html" class="active">My Day</a>
+            </nav>
+        </div>
+        <div class="status-badge" id="status-badge">
+            <div class="status-dot" id="status-dot"></div>
+            <span id="status-text">Loading...</span>
+        </div>
+    </header>
+
+    <main class="md-main">
+        <div class="md-intro">
+            <h1>What to tackle today</h1>
+            <p>A deliberate mix across priority bands so aging and low-priority tickets don't slip through the cracks.</p>
+        </div>
+
+        <!-- Top stat strip -->
+        <div class="md-strip" id="md-strip"></div>
+
+        <!-- Themed buckets -->
+        <div class="md-buckets" id="md-buckets"></div>
+
+        <!-- Interleaved focus queue -->
+        <section class="md-queue" id="md-queue">
+            <div class="md-queue-head">
+                <h2>Focus Queue</h2>
+                <p>Everything on your plate, interleaved across priorities so each band gets airtime.</p>
+            </div>
+            <div class="md-queue-cards" id="md-queue-cards"></div>
+        </section>
+    </main>
+
+    <script src="triage_data.js"></script>
+    <script>
+        if (typeof TRIAGE_DATA === 'undefined') { window.TRIAGE_DATA = []; }
+    </script>
+    <script src="myday.js"></script>
+</body>
+
+</html>
