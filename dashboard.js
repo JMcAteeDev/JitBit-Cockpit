@@ -505,10 +505,25 @@ function updateSyncStatus() {
     text.textContent = label;
 }
 
+// Open a ticket referenced by a #ticket-<id> URL hash (deep link from My Day)
+function openTicketFromHash() {
+    const match = /^#ticket-(\d+)$/.exec(window.location.hash);
+    if (!match) return;
+    const id = parseInt(match[1], 10);
+    if (!TRIAGE_DATA.some(t => t.id === id)) return;
+    selectTicket(id);
+    const card = ticketListContainer.querySelector(`.ticket-card[data-id="${id}"]`);
+    if (card) card.scrollIntoView({ block: 'center' });
+}
+
 // Initialize Cockpit App
 window.addEventListener('DOMContentLoaded', () => {
     calculateKPIs();
     renderTicketList();
     setupFilters();
     updateSyncStatus();
+    openTicketFromHash();
 });
+
+// Respond to hash changes while the dashboard is already open
+window.addEventListener('hashchange', openTicketFromHash);

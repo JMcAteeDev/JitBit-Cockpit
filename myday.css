@@ -1,0 +1,346 @@
+/* ===========================================================================
+   My Day -- Focus Planner layout.
+   Relies on dashboard.css (loaded first) for design tokens, the header,
+   status badge, priority badges, and building-color-* classes. This file only
+   adds planner-specific layout.
+   =========================================================================== */
+
+/* The planner scrolls vertically, unlike the fixed-height dashboard workspace */
+body.md-body {
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Main planner container */
+.md-main {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 28px 32px 64px;
+    width: 100%;
+}
+
+.md-intro {
+    margin-bottom: 22px;
+}
+
+.md-intro h1 {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.md-intro p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-top: 4px;
+}
+
+/* Top stat strip */
+.md-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    margin-bottom: 30px;
+}
+
+.md-stat {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.md-stat-value {
+    font-family: var(--font-display);
+    font-size: 1.7rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.md-stat-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.md-stat-urgent .md-stat-value { color: var(--color-high); }
+.md-stat-waiting .md-stat-value { color: var(--accent-primary); }
+.md-stat-aging .md-stat-value { color: var(--color-critical); }
+.md-stat-load .md-stat-value { color: var(--color-low); }
+
+/* Themed buckets */
+.md-buckets {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 34px;
+}
+
+.md-bucket {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 18px 18px 20px;
+    border-top: 3px solid var(--accent-primary);
+}
+
+.md-bucket-dofirst   { border-top-color: var(--color-critical); }
+.md-bucket-dontrot   { border-top-color: var(--color-medium); }
+.md-bucket-awaiting  { border-top-color: var(--accent-primary); }
+.md-bucket-quickwins { border-top-color: #10b981; }
+
+.md-bucket-head {
+    margin-bottom: 14px;
+}
+
+.md-bucket-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.md-bucket-icon {
+    font-size: 1.1rem;
+}
+
+.md-bucket-title h2 {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.md-bucket-count {
+    margin-left: auto;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    padding: 2px 10px;
+    border-radius: 99px;
+}
+
+.md-bucket-sub {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.md-bucket-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Focus queue */
+.md-queue {
+    margin-top: 8px;
+}
+
+.md-queue-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.md-queue-head h2 {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.md-queue-head p {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.md-queue-cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+/* Ticket card (shared by buckets + queue) */
+.md-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 12px 14px;
+    transition: var(--transition-smooth);
+}
+
+.md-card:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-hover);
+}
+
+.md-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 7px;
+}
+
+.md-id {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    font-family: var(--font-display);
+}
+
+.md-card-flags {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.md-flag {
+    font-size: 0.66rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 99px;
+    white-space: nowrap;
+}
+
+.md-flag-waiting {
+    color: var(--accent-primary);
+    background: var(--accent-primary-glow);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.md-flag-stale {
+    color: var(--color-critical);
+    background: var(--color-critical-glow);
+    border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.md-flag-age {
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+}
+
+.md-building {
+    font-size: 0.66rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.md-subject {
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.35;
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.md-card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.md-from {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.md-effort {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 99px;
+    white-space: nowrap;
+    border: 1px solid var(--border-color);
+}
+
+.md-effort-quick  { color: #10b981; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.25); }
+.md-effort-medium { color: var(--color-medium); background: var(--color-medium-glow); }
+.md-effort-heavy  { color: var(--color-high); background: var(--color-high-glow); }
+
+.md-card-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.md-action {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    transition: var(--transition-smooth);
+}
+
+.md-action-detail {
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.md-action-detail:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.07);
+    border-color: var(--border-hover);
+}
+
+.md-action-jitbit {
+    color: var(--accent-primary);
+    background: var(--accent-primary-glow);
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+.md-action-jitbit:hover {
+    color: var(--text-primary);
+    background: var(--accent-primary);
+}
+
+/* Empty state */
+.md-empty {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text-muted);
+}
+
+.md-empty h3 {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.md-empty a {
+    color: var(--accent-primary);
+}
+
+@media (max-width: 1000px) {
+    .md-strip { grid-template-columns: repeat(2, 1fr); }
+    .md-buckets,
+    .md-queue-cards { grid-template-columns: 1fr; }
+}
